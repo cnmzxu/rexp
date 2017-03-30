@@ -3,15 +3,15 @@ class __compiledre(object):
     """
         a compiled regular expression engine.
     """
-    def __init__(self, NFA):
+    def __init__(self, DFA):
         """
             init this expression engine with a DFA.
             a DFA includes:
-                transtable: a list of dic, each dic is set->STATE
-                START_STATE, STOP_STATE: a set
-                STATES: a list of set
+                transtable: a list of dic, each dic is index->STATE
+                START_STATE: a int
+                STOP_STATES: a list of int
         """
-        self.transtable, self.START_STATE, self.STOP_STATE = DFA
+        self.transtable, self.START_STATE, self.STOP_STATES = DFA
 
 
     def search(self, string, start = 0, end = None):
@@ -29,11 +29,11 @@ class __compiledre(object):
             tmatchy = matchx
             matchy = matchx
             while True:
-                if nowstate == self.STOP_STATE:
+                if nowstate in self.STOP_STATES:
                     matchy = tmatchy
                 if tmatchy == end:
                     break
-                nowstate = self.transtable[state].get(string[tmatchy], None)
+                nowstate = self.transtable[nowstate].get(string[tmatchy], None)
                 if nowstate == None:
                     break
                 tmatchy = tmatchy + 1
@@ -152,8 +152,6 @@ def _NFA2DFA(NFA):
     states = []
     stopstates = set()
     ids = set([x for dic in NFA_transtable for x in dic if x])
-    print(NFA_stopstate)
-    print(ids)
     def __find_dest(s, index):
         dest = set()
         for x in s:
@@ -161,7 +159,6 @@ def _NFA2DFA(NFA):
         return dest
 
     def __closure(s):
-        visit_flag = [0] * (NFA_stopstate + 1)
         l = len(s)
         s = set(s)
         x = s
@@ -189,26 +186,22 @@ def _NFA2DFA(NFA):
     startstate = __closure(set([NFA_startstate]))
     d.append(startstate)
     while True:
-        if not len(d):
+        if not d:
             break
         s = d.popleft()
         __check_state(s)
         for index in ids:
             dest = __closure(__find_dest(s, index))
-            if dest not in states:
-                d.append(dest)
-                __check_state(dest)
+            if dest:
+                if dest not in states:
+                    d.append(dest)
+                    __check_state(dest)
                 __add_trans(s, index, dest)
-    print(states)
-    print(states.index(startstate))
-    print(stopstates)
-    print("*****************************************")
-    print(transtable)
-    print("*****************************************")
-    return transtable
+    while(len(states) > len(transtable)):
+        transtable.append({})
+    return (transtable, states.index(startstate), stopstates)
         
-"""def recompile(pattern):
-    NFA = _e_NFA2NFA(_pattern2e_NFA(pattern))
-    print(NFA)
-    return __compiledre(NFA)"""
+def recompile(pattern):
+    DFA = _NFA2DFA(_pattern2NFA(pattern))
+    return __compiledre(DFA)
 
